@@ -192,7 +192,6 @@ class Account {
 }
 
 class Bank {
-    clients: any[] = [];
     accounts: Account[] = [];
 
     calculateCommission(accountNumber: string, startDate: Date, endDate: Date): number {
