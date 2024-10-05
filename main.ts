@@ -210,6 +210,20 @@ class Bank {
         }
         return commission;
     }
+
+    addAccount(account:Account){
+        accounts.push(account);
+    }
+
+    removeAccount(account:Account){
+        for(let i=0; i < accounts.length; i++){
+
+              if(accounts[i].get_number() === account.get_number()){
+                  accounts.splice(i,1);
+                  break;
+              }
+        }
+  }
 }
 
 function compareDates(date1: Date, date2: Date): boolean {
@@ -263,7 +277,7 @@ console.log("Monto total en moneda local: ", account1.transactionAmountInLocalCu
 
 // Creación de instancias y prueba de la clase Bank
 const bank = new Bank();
-bank.accounts.push(account1);
+bank.addAccount(account1);
 
 const commission = bank.calculateCommission("ACC123", new Date("2023-01-01"), new Date("2023-12-31"));
 console.log("Comisión calculada: ", commission);
