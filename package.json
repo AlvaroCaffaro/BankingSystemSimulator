@@ -1,0 +1,19 @@
+{
+  "name": "bankingsystemsimulator",
+  "version": "1.0.0",
+  "description": "This code implements a basic banking system that manages holders, accounts, transactions, and currency exchange rates.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlvaroCaffaro/BankingSystemSimulator.git"
+  },
+  "author": "Alvaro Jose Caffaro",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlvaroCaffaro/BankingSystemSimulator/issues"
+  },
+  "homepage": "https://github.com/AlvaroCaffaro/BankingSystemSimulator#readme"
+}

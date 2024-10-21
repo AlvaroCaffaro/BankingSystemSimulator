@@ -1,3 +1,25 @@
+
+
+function compareDates(date1: Date, date2: Date): boolean {
+    
+    if (date1.getFullYear() < date2.getFullYear()) {
+        return true;
+    }
+    if (date1.getFullYear() === date2.getFullYear()) {
+        if (date1.getMonth() < date2.getMonth()) {
+            return true;
+        }
+        if (date1.getMonth() === date2.getMonth()) {
+            return date1.getDate() <= date2.getDate();
+        }
+    }
+    return false;
+}
+
+
+
+
+
 class Holder{ 
     private dni:number;
     private name:string;
@@ -36,7 +58,9 @@ class CurrencyDB{
     }
     public consultar_cotizacion_pesos(){ 
 
-        fetch(`https://v6.exchangerate-api.com/v6/${this.apiKey}/latest/${this.baseCurrency}`)
+        return 1200;
+
+        /*fetch(`https://v6.exchangerate-api.com/v6/${this.apiKey}/latest/${this.baseCurrency}`)
             .then(response => {
                  if (!response.ok) {
                     throw new Error('Error en la respuesta de la API');
@@ -50,6 +74,8 @@ class CurrencyDB{
         .catch(error => {
             return('hubo un error al obtener las conversiones');
         });
+
+        */
 }
 
 }
@@ -103,7 +129,7 @@ class Transaction{
     }
 
     public get_amount(){
-        return(`monto: ${this.amount} ${this.currency}`);
+        return(`monto: ${this.amount} ${this.currency.get_code()}`);
     }
         
     public get_type(){
@@ -120,7 +146,7 @@ class Transaction{
         if(typeof res == 'string'){
             return res;
         }
-        return Number(res);
+        return ( (this.type === 'deposit')?Number(res): -Number(res) );
     }
 }
 
@@ -149,8 +175,8 @@ class Account {
     transactionCount(startDate: Date, endDate: Date): number {
         let count = 0;
         for (let t of this.transactions) {
-            if (compareDates(t.get_date(), startDate)) {
-                if (compareDates(endDate, t.get_date())) {
+            if (compareDates(startDate,t.get_date())) {
+                if (compareDates(t.get_date(),endDate)) {
                     count++;
                 } else {
                     break;
@@ -164,8 +190,8 @@ class Account {
         let amount = 0;
         let res:Number|string;
         for (let t of this.transactions) {
-            if (compareDates(t.get_date(), startDate)) {
-                if (compareDates(endDate, t.get_date())) {
+            if (compareDates(startDate,t.get_date())) {
+                if (compareDates(t.get_date(),endDate)) {
                     
                     res = t.amountInLocalCurrency();
                     if(typeof res == 'string'){
@@ -192,7 +218,9 @@ class Account {
 }
 
 class Bank {
-    accounts: Account[] = [];
+    private accounts: Account[] = [];
+
+    constructor(){}
 
     calculateCommission(accountNumber: string, startDate: Date, endDate: Date): number {
         let commission = 0;
@@ -203,7 +231,7 @@ class Bank {
                 if(typeof transactionAmount == 'string'){
                     throw new Error(transactionAmount);
                 }
-                commission = 30 - (transactionAmount * 0.5) / transactionCount;
+                commission = (transactionCount === 0)? 0 :(30 - (transactionAmount/transactionCount * (0.05)/100));
                 break;
             }
         }
@@ -211,39 +239,19 @@ class Bank {
     }
 
     addAccount(account:Account){
-        accounts.push(account);
+        this.accounts.push(account);
     }
 
     removeAccount(account:Account){
-        for(let i=0; i < accounts.length; i++){
+        for(let i=0; i < this.accounts.length; i++){
 
-              if(accounts[i].get_number() === account.get_number()){
-                  accounts.splice(i,1);
+              if(this.accounts[i].get_number() === account.get_number()){
+                  this.accounts.splice(i,1);
                   break;
               }
         }
   }
 }
-
-function compareDates(date1: Date, date2: Date): boolean {
-    if (date1.getFullYear() > date2.getFullYear()) {
-        return true;
-    }
-    if (date1.getFullYear() === date2.getFullYear()) {
-        if (date1.getMonth() > date2.getMonth()) {
-            return true;
-        }
-        if (date1.getMonth() === date2.getMonth()) {
-            return date1.getDate() >= date2.getDate();
-        }
-    }
-    return false;
-}
-
-
-
-
-
 
 
 
@@ -271,12 +279,14 @@ const account1 = new Account("ACC123", "12345678");
 account1.depositMoney(100, currencyUSD);
 account1.extractMoney(50, currencyUSD);
 
-console.log("Cantidad de transacciones: ", account1.transactionCount(new Date("2023-01-01"), new Date("2023-12-31")));
-console.log("Monto total en moneda local: ", account1.transactionAmountInLocalCurrency(new Date("2023-01-01"), new Date("2023-12-31")));
+const tday:Date = new Date();
+const yday:Date = new Date(tday.getFullYear(),tday.getMonth(),tday.getDate() - 1);
+console.log("Cantidad de transacciones: ", account1.transactionCount(yday, tday) );
+console.log("Monto total en moneda local: ", account1.transactionAmountInLocalCurrency(yday, tday));
 
 // Creación de instancias y prueba de la clase Bank
 const bank = new Bank();
 bank.addAccount(account1);
 
-const commission = bank.calculateCommission("ACC123", new Date("2023-01-01"), new Date("2023-12-31"));
+const commission = bank.calculateCommission("ACC123",yday, tday);
 console.log("Comisión calculada: ", commission);
