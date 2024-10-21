@@ -26,7 +26,7 @@ class Holder{
     private lastName:string;
 
 
-  constructor(dni,name,lastName){
+  constructor({dni,name,lastName}:{dni:number,name:string,lastName:string}){
     this.dni = dni;
     this.name = name;
     this.lastName = lastName;
@@ -51,31 +51,23 @@ class Holder{
 class CurrencyDB{ 
     private baseCurrency:string;
     private targetCurrency = 'ARS';
-    private apiKey = 'YOUR_API_KEY'; // ESTO DEBERIA ESTAR OCULTO PERO es para que se note que utilizamos una api_key
+    private apiKey = 'api_key'; // ESTO DEBERIA ESTAR OCULTO PERO es para que se note que utilizamos una api_key
 
-    constructor(baseCurrency){
+    constructor({baseCurrency}:{baseCurrency:string}){
         this.baseCurrency = baseCurrency;
     }
-    public consultar_cotizacion_pesos(){ 
-
-        return 1200;
-
-        /*fetch(`https://v6.exchangerate-api.com/v6/${this.apiKey}/latest/${this.baseCurrency}`)
-            .then(response => {
-                 if (!response.ok) {
-                    throw new Error('Error en la respuesta de la API');
-            }
-            response.json();
-        })
-        .then(data => {
+    public async consultar_cotizacion_pesos(){ 
+        const url = `https://v6.exchangerate-api.com/v6/${this.apiKey}/latest/${this.baseCurrency}`;
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
             const rate = data.conversion_rates[this.targetCurrency];
             return(Number(rate));
-        })
-        .catch(error => {
-            return('hubo un error al obtener las conversiones');
-        });
 
-        */
+        } catch (e) {
+            return "ha ocurrido un error al obtener las conversiones, intente mas tarde"
+        }
 }
 
 }
@@ -92,7 +84,7 @@ class Currency{
    constructor(name:string,code:string) { 
         this.name = name;
         this.code = code;
-        this.persistence = new CurrencyDB(this.code);
+        this.persistence = new CurrencyDB({baseCurrency:this.code});
 
    }
 
@@ -103,8 +95,8 @@ class Currency{
     return(this.code);
    }
 
-    public amountInLocalCurrency(monto:number){
-        const rate:any = this.persistence.consultar_cotizacion_pesos();
+    public async amountInLocalCurrency(monto:number){
+        const rate:any = await this.persistence.consultar_cotizacion_pesos();
         if(typeof rate == 'string'){
             return 'No es posible realizar la conversion ahora mismo, intente mas tarde.';
         }
@@ -121,7 +113,7 @@ class Transaction{
     private date:Date;
     private type:string;
 
-    constructor(date,type,amount,currency){ 
+    constructor({date,type,amount,currency}:{date:Date,type:string,amount:number,currency:Currency}){ 
         this.date = date;
         this.type = type;
         this.amount = amount;
@@ -141,8 +133,8 @@ class Transaction{
     }
 
     
-    public amountInLocalCurrency(){ 
-        const res:any = this.currency.amountInLocalCurrency(Number(this.amount));
+    public async amountInLocalCurrency(){ 
+        const res:any = await this.currency.amountInLocalCurrency(Number(this.amount));
         if(typeof res == 'string'){
             return res;
         }
@@ -156,9 +148,9 @@ class Account {
     private number: string;
     private dniHolder: string;
     private transactions: Transaction[] = [];
-    types: string[] = ['deposit', 'extract'];
+    private types: string[] = ['deposit', 'extract'];
 
-    constructor(number: string, dni: string) {
+    constructor({number,dni}:{number: string, dni: string}) {
         this.number = number;
         this.dniHolder = dni;
     }
@@ -186,14 +178,14 @@ class Account {
         return count;
     }
 
-    transactionAmountInLocalCurrency(startDate: Date, endDate: Date): number|string {
+    async transactionAmountInLocalCurrency(startDate: Date, endDate: Date) {
         let amount = 0;
         let res:Number|string;
         for (let t of this.transactions) {
             if (compareDates(startDate,t.get_date())) {
                 if (compareDates(t.get_date(),endDate)) {
                     
-                    res = t.amountInLocalCurrency();
+                    res = await t.amountInLocalCurrency();
                     if(typeof res == 'string'){
                         return 'no se puede calcular el monto total';
                     }
@@ -208,11 +200,11 @@ class Account {
     }
 
     depositMoney(amount: number, currency: Currency): void {
-        this.transactions.push(new Transaction(new Date(), this.types[0], amount, currency));
+        this.transactions.push(new Transaction({date:new Date(), type:this.types[0], amount:amount, currency: currency}));
     }
 
     extractMoney(amount: number, currency: Currency): void {
-        this.transactions.push(new Transaction(new Date(), this.types[1], amount, currency));
+        this.transactions.push(new Transaction({date: new Date(), type: this.types[1], amount, currency}));
     }
 
 }
@@ -222,15 +214,17 @@ class Bank {
 
     constructor(){}
 
-    calculateCommission(accountNumber: string, startDate: Date, endDate: Date): number {
+    async calculateCommission(accountNumber: string, startDate: Date, endDate: Date){
         let commission = 0;
         for (let account of this.accounts) {
             if (account.get_number() === accountNumber) {
                 const transactionCount = account.transactionCount(startDate, endDate);
-                const transactionAmount = account.transactionAmountInLocalCurrency(startDate, endDate);
+                const transactionAmount = await account.transactionAmountInLocalCurrency(startDate, endDate);
                 if(typeof transactionAmount == 'string'){
-                    throw new Error(transactionAmount);
+                   return (transactionAmount);
                 }
+
+                                                            // commission formula
                 commission = (transactionCount === 0)? 0 :(30 - (transactionAmount/transactionCount * (0.05)/100));
                 break;
             }
@@ -258,35 +252,58 @@ class Bank {
 /// INSTANCIAS DE PRUEBA
 
 // Creación de instancias y prueba de la clase Titular
-const titular1 = new Holder(12345678, "John", "Doe");
+const titular1 = new Holder({dni:12345678, name:"John", lastName:"Doe"});
 console.log("Nombre del titular: ", titular1.get_name());
 console.log("DNI del titular: ", titular1.get_dni());
 console.log("Apellido del titular: ", titular1.get_lastName());
 
-// Creación de instancias y prueba de la clase Currency y CurrencyDB
-const currencyUSD = new Currency("Dollar", "USD");
-console.log("Conversión de 100 USD a ARS: ", currencyUSD.amountInLocalCurrency(100));
-
-// Creación de instancias y prueba de la clase Transaction
-const transaction1 = new Transaction(new Date(), "deposit", 100, currencyUSD);
-console.log("Monto de la transacción: ", transaction1.get_amount());
-console.log("Tipo de transacción: ", transaction1.get_type());
-console.log("Fecha de la transacción: ", transaction1.get_date());
-console.log("Monto en moneda local: ", transaction1.amountInLocalCurrency());
+// creacion de la instancia currencyUSD
+const currencyUSD = new Currency("Dolares", "USD");
+const currencyARS = new Currency("Peso Argentino", "ARS");
 
 // Creación de instancias y prueba de la clase Account
-const account1 = new Account("ACC123", "12345678");
+const account1 = new Account({number:"ACC123", dni:"12345678"});
 account1.depositMoney(100, currencyUSD);
 account1.extractMoney(50, currencyUSD);
+account1.extractMoney(9000, currencyARS);
 
-const tday:Date = new Date();
-const yday:Date = new Date(tday.getFullYear(),tday.getMonth(),tday.getDate() - 1);
-console.log("Cantidad de transacciones: ", account1.transactionCount(yday, tday) );
-console.log("Monto total en moneda local: ", account1.transactionAmountInLocalCurrency(yday, tday));
 
-// Creación de instancias y prueba de la clase Bank
+// creacion de la instancia bank y añadimos la cuenta.
 const bank = new Bank();
 bank.addAccount(account1);
 
-const commission = bank.calculateCommission("ACC123",yday, tday);
-console.log("Comisión calculada: ", commission);
+
+// prueba de las funcionalidades
+
+
+async function pruebaAccount(sDate:Date,fDate:Date) {
+    try {
+        const amount = await account1.transactionAmountInLocalCurrency(sDate,fDate);
+        const count = account1.transactionCount(sDate,fDate);
+    
+        console.log('cantidad de transacciones entre los dias seleccionados: ', count);
+        console.log('monto total en pesos de las transacciones entre los dias seleccionados: ', amount);
+
+    } catch (error) {
+        console.log('error en la prueba account');
+    }
+}
+
+const today = new Date();
+const start = new Date(2024, 9, 20); 
+
+pruebaAccount(start,today);
+
+
+async function pruebaBank(account:Account,sDate:Date,fDate:Date) {
+    try {
+        const commission = await bank.calculateCommission(account.get_number(),sDate, fDate);
+        console.log('calculo total de la comision: ',commission) ;   
+    } catch (error) {
+        console.log('error prueba bank');
+    }
+};
+
+pruebaBank(account1,start,today);
+
+
