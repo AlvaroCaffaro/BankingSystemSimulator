@@ -1,3 +1,3 @@
-This code implements a basic banking system that manages holders, accounts, transactions, and currency exchange rates.
+This code simulates a banking system that manages account holders, accounts, transactions, and currency exchange rates. Additionally, it calculates the commissions charged by the bank for transactions made by users over a specific period.
 
-Este código simula un sistema bancario básico que gestiona titulares, cuentas, transacciones y tasas de cambio de monedas.
+Este código simula un sistema bancario que gestiona titulares, cuentas, transacciones y tasas de cambio de monedas. Además, permite calcular las comisiones que el banco cobra por las transacciones realizadas por los usuarios durante un período específico.
